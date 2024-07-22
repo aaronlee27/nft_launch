@@ -44,18 +44,22 @@ contract ProNFT is ERC721, VRFConsumerBaseV2Plus {
     /// @notice Array of NFT metadata
     Metadata[] public metadatas;
 
+
+
     uint256 private immutable s_startTime;
     uint256 private immutable s_endTime;
 
+
+
     uint256 private s_mintFee;
     ERC20 private s_feeToken;
-    uint256 private s_nftMinted;
+    uint256 private s_nftMinted = 0;
     bool private s_ownerClaimed;
 
     uint256 s_clearingEntropy;
     bool s_clearingEntropySet;
-    uint256 s_shuffleCount;
-    uint256 s_revealNftCount = 0;
+    uint256 s_shuffleCount = 0;
+    uint256 s_revealedNftCount = 0;
 
     uint256 s_subscriptionId;
     bytes32 s_keyHash;
@@ -77,7 +81,7 @@ contract ProNFT is ERC721, VRFConsumerBaseV2Plus {
     mapping (uint256 => bool) private s_isClaimed;
     mapping (uint256 => uint256) private s_ticketRequestId;
 
-    uint256 public constant MAXIMUM_SUPPLY = 10000;
+    uint256 public constant MAXIMUM_SUPPLY = 15;
     uint256 public constant LIMIT_PER_TRANSACTION = 2;
     uint256 public constant MAX_PER_ADDRESS = 10;
 
@@ -165,7 +169,8 @@ contract ProNFT is ERC721, VRFConsumerBaseV2Plus {
         }
 
         for (uint256 i = s_shuffleCount; i < s_shuffleCount + _numShuffles; i++) {
-            uint256 _indexToSwap = i + uint256(keccak256(abi.encode(s_clearingEntropy, i))) % (s_entries_list.length - i);
+            // uint256(keccak256(abi.encode(s_clearingEntropy, i)))
+            uint256 _indexToSwap = i + s_clearingEntropy % (s_entries_list.length - i);
             address _temp = s_entries_list[i];
             s_entries_list[i] = s_entries_list[_indexToSwap];
             s_entries_list[_indexToSwap] = _temp;
@@ -236,7 +241,7 @@ contract ProNFT is ERC721, VRFConsumerBaseV2Plus {
     }
 
     function revealPendingMetadata() external returns (uint256){
-        if (s_nftMinted - s_revealNftCount == 0){
+        if (s_nftMinted - s_revealedNftCount == 0){
             revert ProNFTNoMorePendingNFT();
         }
 
@@ -261,11 +266,11 @@ contract ProNFT is ERC721, VRFConsumerBaseV2Plus {
     function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
         if (s_clearingEntropySet || s_entries_list.length < MAXIMUM_SUPPLY) {
             metadatas.push(Metadata({
-                startIndex: s_revealNftCount + 1,
-                endIndex: s_nftMinted + 1,
+                startIndex: s_revealedNftCount,
+                endIndex: s_nftMinted,
                 entropy: randomWords[0]
             }));
-            s_revealNftCount = s_nftMinted;
+            s_revealedNftCount = s_nftMinted;
             return;
         }
 
@@ -290,15 +295,15 @@ contract ProNFT is ERC721, VRFConsumerBaseV2Plus {
         }
 
         randomness = uint256(keccak256(abi.encode(randomness, _tokenId))) % 1000 + 1;
-
+        // randomness = randomness % 1000 + 1;
     
 
         if (randomness <= 1) {
-            return COMMON;
+            return LEGENDARY;
         }
 
         else if (randomness <= 10) {
-            return UNCOMMON;
+            return EPIC;
         } 
         
         else if (randomness <= 50) {
@@ -306,11 +311,11 @@ contract ProNFT is ERC721, VRFConsumerBaseV2Plus {
         }
 
         else if (randomness <= 250) {
-            return EPIC;
+            return UNCOMMON;
         }
 
         else {
-            return LEGENDARY;
+            return COMMON;
         }
     } 
 
@@ -366,4 +371,115 @@ contract ProNFT is ERC721, VRFConsumerBaseV2Plus {
     function getNumEntries(address _user) public view returns (uint256) {
         return s_entries[_user];
     }
+
+    function getEntriesList() public view returns (address[] memory) {
+        return s_entries_list;
+    }   
+
+    function getTxOrigin() public view returns (address) {
+        return tx.origin;
+    }
+
+    function getClearingEntropy() public view returns (uint256) {
+        return s_clearingEntropy;
+    }
+
+    function getClearingEntropySet() public view returns (bool) {
+        return s_clearingEntropySet;
+    }
+
+    function getShuffleCount() public view returns (uint256) {
+        return s_shuffleCount;
+    }
+
+    function getClaimed(uint256 _ticket) public view returns (bool) {
+        return s_isClaimed[_ticket];
+    }
+
+    function getTickets(address _user) public view returns (uint256[] memory) {
+        uint256 _numTickets = getNumEntries(_user);
+        uint256[] memory _tickets = new uint[](_numTickets);
+        uint256 counter = 0;
+        for (uint i = 0; i < s_entries_list.length; i++) {
+            if (s_entries_list[i] == _user) {
+                _tickets[counter] = i;
+                counter++;
+            }
+        }
+        return _tickets;
+    }
+
+    function getNumNFTMinted() public view returns (uint256) {
+        return s_nftMinted;
+    }
+
+    function getMetadatas() public view returns (Metadata[] memory) {
+        return metadatas;
+    }
+
+    function getStartTime() public view returns (uint256) {
+        return s_startTime;
+    }
+
+    function getEndTime() public view returns (uint256) {
+        return s_endTime;
+    }
+
+    function getFeeToken() public view returns (ERC20) {
+        return s_feeToken;
+    }
+
+    function getOwnerClaimed() public view returns (bool) {
+        return s_ownerClaimed;
+    }
+
+    function getRevealedNftCount() public view returns (uint256) {
+        return s_revealedNftCount;
+    }
+
+    function getSubscriptionId() public view returns (uint256) {
+        return s_subscriptionId;
+    }
+
+    function getKeyHash() public view returns (bytes32) {
+        return s_keyHash;
+    }
+
+    function getCallbackGasLimit() public view returns (uint32) {
+        return callbackGasLimit;
+    }
+
+    function getRequestConfirmations() public view returns (uint16) {
+        return requestConfirmations;
+    }
+
+    function getNumWords() public view returns (uint32) {
+        return numWords;
+    }
+
+    function getCommon() public view returns (string memory) {
+        return COMMON;
+    }
+
+    function getUncommon() public view returns (string memory) {
+        return UNCOMMON;
+    }
+
+    function getRare() public view returns (string memory) {
+        return RARE;
+    }
+
+    function getEpic() public view returns (string memory) {
+        return EPIC;
+    }
+
+    function getLegendary() public view returns (string memory) {
+        return LEGENDARY;
+    }
+
+    function getTicketRequestId(uint256 _ticket) public view returns (uint256) {
+        return s_ticketRequestId[_ticket];
+    }
+
+
 }
