@@ -1,0 +1,11 @@
+{
+    "name": "Simple NFT Collection",
+    "description": "A simple NFT Collection",
+    "image": "https://ipfs.io/ipfs/QmaUEYVxX8FbP1go39gEF6dcoy2Ua4uc6sTdQe5j7xdfBV?filename=epic-nft.svg",
+    "attributes": [
+      {
+        "trait_type": "Rarity",
+        "value": "epic"
+      }
+    ]
+  }
